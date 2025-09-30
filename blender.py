@@ -404,36 +404,189 @@ print()
 print("*"*100)
 print()
 
-Total_time = []
 
-for i in range(0,len(inputs)):
-    
-    inputs_ = [inputs[i]]
-    candidates_texts_ = [candidates_texts[i]]
-    insts_ = [insts[i]]
-    
+print()
+print("Start: blender.rank")
+print()
 
-    t1__ = time.time()
-    
-    ranks_ = blender.rank(inputs_, candidates_texts_, instructions=insts_, return_scores=False, batch_size=1)
+ranks = blender.rank(inputs, candidates_texts, instructions=insts, return_scores=False, batch_size=1)
 
-    topk_candidates_ = get_topk_candidates_from_ranks(ranks_, candidates_texts_, top_k=2)
-
-    fuse_generations_ = blender.fuse(inputs_, topk_candidates_, instructions=insts_, batch_size=1)
-    
-    t2__ = time.time()
-    
-    Total_time.append(t2__ - t1__)
-    
-    
+print()
+print(len(ranks))
+print()
+print("end: blender.rank")
+print()
 
 
+
+print()
+print("start: topk_candidates")
+print()
+t_start = time.time()
+topk_candidates = get_topk_candidates_from_ranks(ranks, candidates_texts, top_k=2)
+print()
+print(len(topk_candidates))
+print()
+print("end: topk_candidates")
+print()
+
+print()
+print("start: fuse_generations")
+print()
+fuse_generations = blender.fuse(inputs, topk_candidates, instructions=insts, batch_size=1)
+t_end = time.time()
+
+total_time = t_end-t_start
+print()
+print("*"*100)
+print()
+print("total time")
+print(total_time)
+print()
+print("*"*100)
+print()
+
+print()
+print(len(fuse_generations))
+print()
+print("end: fuse_generations")
+print()
+
+print()
+print("*"*100)
+print()
+print()
+print()
+print()
+print()
+print("*"*100)
+print()
+print("--------------------------------------Rank-----------------------------------")
+print()
+print("*"*100)
+print()
+print()
+print()
+print(ranks)
+print()
+print()
+print(type(ranks))
+print()
+print()
+print(len(ranks))
+print()
+print()
+print()
+print()
+print()
+print()
+print("*"*100)
+print()
+print("--------------------------------------topk_candidates-----------------------------------")
+print()
+print("*"*100)
+print()
+print()
+print()
+print(topk_candidates)
+print()
+print()
+print(type(topk_candidates))
+print()
+print()
+print(len(topk_candidates))
+print()
+print()
+print()
+print()
+print()
+print()
+print("*"*100)
+print()
+print("--------------------------------------fuse_generations-----------------------------------")
+print()
+print("*"*100)
+print()
+print()
+print()
+print(fuse_generations)
+print()
+print()
+print(type(fuse_generations))
+print()
+print()
+print(len(fuse_generations))
+print()
+print()
+print()
+print("*"*100)
+print()
+
+
+topk_candidates = [i[0] for i in topk_candidates]
+# fuse_generations = [i[0] for i in fuse_generations]
+
+
+print()
+print("*"*100)
+print()
+print("after correction")
+print()
+print("*"*100)
+print()
+
+
+print("*"*100)
+print()
+print("--------------------------------------topk_candidates-----------------------------------")
+print()
+print("*"*100)
+print()
+print()
+print()
+print(topk_candidates)
+print()
+print()
+print(type(topk_candidates))
+print()
+print()
+print(len(topk_candidates))
+print()
+print()
+print()
+print()
+print()
+print()
+print("*"*100)
+print()
+
+print("--------------------------------------fuse_generations-----------------------------------")
+print()
+print("*"*100)
+print()
+print()
+print()
+print(fuse_generations)
+print()
+print()
+print(type(fuse_generations))
+print()
+print()
+print(len(fuse_generations))
+print()
+print()
+print()
+print("*"*100)
+print()
 
 
 
 df = {
 
-    "Total_time" : Total_time
+    "topk_candidates" : topk_candidates, 
+    "Pred" : fuse_generations, 
+    "GT" : all_targets, 
+    "Total_time" : [total_time for i in range(len(topk_candidates))]
      }
 
 
@@ -445,4 +598,4 @@ print(df.head(2))
 
 model_name_ = model_name.split("/")[-1]
 
-df.to_csv(f"/workspace/data/Momojit/ensemble-llm/llm-blen/infer-res-2/llm-blen-{model_name_}-{dataset_name[i_]}.csv", index = False)
+df.to_csv(f"/workspace/data/Momojit/ensemble-llm/llm-blen/infer-res/llm-blen-{model_name_}-{dataset_name[i_]}.csv", index = False)
