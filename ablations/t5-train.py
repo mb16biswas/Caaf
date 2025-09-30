@@ -1,22 +1,3 @@
-import subprocess
-
-
-
-commands = [
-"pip install datasets==2.16.1", 
-"pip install scikit-learn numpy pandas", 
-"pip install transformers==4.30", 
-"pip install -q -U trl accelerate", 
-"pip uninstall -y apex", 
-"pip install -U sentence-transformers"
-]
-
-for cmd in commands:
-    subprocess.run(cmd, shell=True)
-    
-
-
-import torch
 from datasets import load_dataset
 from transformers import (
     AutoTokenizer,
@@ -93,7 +74,7 @@ print()
 
 def load_seq2seq_model(model_name):
     
-    checkpoint = "/workspace/data/Momojit/ensemble-llm/base-line/models/t5-base/checkpoint-400/"
+    checkpoint = "/workspace/data/ensemble-llm/base-line/models/t5-base/checkpoint-400/"
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     model = AutoModelForSeq2SeqLM.from_pretrained(checkpoint)
     return tokenizer, model
@@ -162,7 +143,7 @@ def gen_prompt(LLM1_Output,LLM2_Output,LLM3_Output,
     return s 
 
 
-df = pd.read_csv("/workspace/data/Momojit/ensemble-llm/pre-train-model/data/pre-data-4774.csv")
+df = pd.read_csv("/workspace/data/ensemble-llm/pre-train-model/data/pre-data-4774.csv")
 df = df.sample(frac=1, random_state=42)
 
 
@@ -218,7 +199,7 @@ data_collator = DataCollatorForSeq2Seq(tokenizer, model=model)
 
 
 folder_name = MODEL_NAME.split("/")[-1]
-output_dir = f"/workspace/data/Momojit/ensemble-llm/base-line/models/{folder_name}"
+output_dir = f"/workspace/data/ensemble-llm/base-line/models/{folder_name}"
 
 training_args = TrainingArguments(
 
@@ -259,58 +240,3 @@ trainer.save_metrics("eval", e)
 
 
 
-# def find_latest_checkpoint(output_dir):
-
-
-#     checkpoint_pattern = os.path.join(output_dir, "checkpoint-*")
-    
-#     checkpoint_dirs = glob.glob(checkpoint_pattern)
-    
-#     if not checkpoint_dirs:
-#         print(f"No checkpoint directories found in {output_dir}")
-#         return None
-
-
-#     def extract_step(path):
-#         match = re.search(r"checkpoint-(\d+)", path)
-#         return int(match.group(1)) if match else -1
-
-#     sorted_checkpoints = sorted(checkpoint_dirs, key=extract_step, reverse=True)
-    
-#     latest_checkpoint = sorted_checkpoints[0]
-    
-#     return latest_checkpoint
-
-# latest_checkpoint = find_latest_checkpoint(output_dir)
-
-# loaded_model = AutoModelForSeq2SeqLM.from_pretrained(latest_checkpoint )
-
-# def summarize(input_text):
-
-#     inputs = tokenizer(input_text, return_tensors="pt", truncation=True, max_length=max_input_length).to(model.device)
-
-#     model.eval()
-#     with torch.no_grad():
-#         outputs = model.generate(inputs["input_ids"], max_length=max_target_length)
-
-#     return tokenizer.decode(outputs[0], skip_special_tokens=True)
-
-# s = dataset["train"]["X"][2]
-
-
-# summarize(s)
-# def summarize(input_text):
-
-#     inputs = tokenizer(input_text, return_tensors="pt", truncation=True, max_length=max_input_length).to(model.device)
-
-#     model.eval()
-#     with torch.no_grad():
-#         outputs = model.generate(inputs["input_ids"], max_length=max_target_length)
-
-#     return tokenizer.decode(outputs[0], skip_special_tokens=True)
-
-# s = dataset["train"]["X"][2]
-
-# loaded_model = AutoModelForSequenceClassification.from_pretrained("./arxiv-bart")
-
-# summarize(s)

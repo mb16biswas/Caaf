@@ -1,43 +1,3 @@
-import subprocess
-
-
-
-commands = [
-"pip install --upgrade pip",
-"pip install torch==2.0.1",
-"pip install langchain",
-"pip install langchain-community",
-"pip install langchainhub",
-"pip install chromadb",
-"pip install bs4",
-"pip install sentence_transformers",
-"pip install pypdf",
-"pip install langchain-huggingface",
-"pip install huggingface_hub",
-"pip install ragatouille",
-"pip install openpyxl",
-"pip install lxml",
-"pip install pandas",
-"pip install transformers==4.38.2",
-"pip install accelerate",
-"pip uninstall -y apex",
-"pip install FlagEmbedding==1.3.2",
-
-]
-
-
-
-
-
-
-
-
-
-for cmd in commands:
-    subprocess.run(cmd, shell=True)
-
-
-
 import bs4
 from langchain import hub
 from langchain_community.document_loaders import WebBaseLoader
@@ -89,7 +49,7 @@ args, unknown_args = parser.parse_known_args()
 
 
 
-base = "/workspace/data/Momojit/ensemble-llm/pre-train/"
+base = "/workspace/data/ensemble-llm/pre-train/"
 datasets = ['covidqa', 'cuad', 'delucionqa', 'emanual', 'expertqa', 'finqa', 'hagrid', 'hotpotqa', 'msmarco', 'pubmedqa', 'tatqa', 'techqa']
 
 
@@ -105,12 +65,6 @@ if(f2 >= len(datasets)):
     
     f2 = 1 
 
-# base = "/workspace/data/Momojit/misinter-policy/pdfs/"
-# db_path = "/workspace/data/Momojit/misinter-policy/db/"
-# cache_path = "/workspace/data/Momojit/misinter-policy/cache-qa3/"
-# Chuck_Size = 1200
-# Chunk_Overlap = 200
-# K_ = 5
 
 
 if unknown_args:
@@ -129,72 +83,82 @@ set_seed(seed)
 if(f1==1):
 
     repo_id = "mistralai/Mistral-7B-Instruct-v0.2"
-    folder = "/workspace/data/Momojit/ensemble-llm/base-res/mistralai-2/"
+    folder = "/workspace/data/ensemble-llm/base-res-test/mistralai-2/"
 
 elif(f1==2):
 
     repo_id = "meta-llama/Meta-Llama-3-8B-Instruct"
-    folder = "/workspace/data/Momojit/ensemble-llm/base-res/llama-3-hf/"
+    folder = "/workspace/data/ensemble-llm/base-res-test/llama-3-hf/"
 
 elif(f1==3):
 
 
     repo_id = "mistralai/Mistral-7B-Instruct-v0.3"
-    folder = "/workspace/data/Momojit/ensemble-llm/base-res/mistralai-3/"
+    folder = "/workspace/data/ensemble-llm/base-res-test/mistralai-3/"
 
 
 elif(f1==4):
 
     repo_id = "dfurman/Llama-2-13B-Instruct-v0.2"
-    folder = "/workspace/data/Momojit/ensemble-llm/base-res/llama-2-13b/"
+    folder = "/workspace/data/ensemble-llm/base-res-test/llama-2-13b/"
 
 
 elif(f1==5):
 
     repo_id = "Equall/Saul-7B-Instruct-v1"
-    folder = "/workspace/data/Momojit/ensemble-llm/base-res/Saul/"
+    folder = "/workspace/data/ensemble-llm/base-res-test/Saul/"
 
 else:
 
     repo_id = "Qwen/Qwen2-7B-Instruct"
-    folder = "/workspace/data/Momojit/ensemble-llm/base-res/quen-2/"
+    folder = "/workspace/data/ensemble-llm/base-res-test/quen-2/"
     temperature=2.0
 
 
 if(f4 == 1): 
 
     si_ = 0 
-    ei_ = 250
+    ei_ = 350
 
 if(f4 == 2): 
 
-    si_ = 1000 
-    ei_ = 2000 
+    si_ = 500
+    ei_ = 1000 
 
 if(f4 == 3): 
 
-    si_ = 2000 
-    ei_ = 3000 
+    si_ = 1000
+    ei_ = 1500 
 
 if(f4 == 4): 
 
-    si_ = 3000
-    ei_ = 4000 
+    si_ = 1500
+    ei_ = 2000 
 
 
 if(f4 == 5): 
 
-    si_ = 4000
-    ei_ = 5000 
+    si_ = 2000
+    ei_ = 2500 
 
 if(f4 == 6): 
 
-    si_ = 5000
-    ei_ = 6000 
+    si_ = 2500
+    ei_ = 3000 
 
 dataset_name = datasets[f2]
 
-f_path = os.path.join(base ,f"train-{dataset_name}.csv")
+if(f2 == 1 or f2 == 11 or f2 == 4 ):
+    
+    max_length = 2048
+    
+else: 
+    
+    max_length = 2048*2
+    
+    
+
+f_path = os.path.join(base ,f"test-{dataset_name}.csv")
 df = pd.read_csv(f_path)
 
 
@@ -555,7 +519,7 @@ for i in tqdm(range(n_)):
 
     t2 = generate_prompt(d, q)
     
-    tokenized_input = tokenizer(t2, max_length=4096//2, truncation=True, return_tensors="pt")
+    tokenized_input = tokenizer(t2, max_length=max_length, truncation=True, return_tensors="pt")
     
     t2 = tokenizer.decode(tokenized_input["input_ids"][0], skip_special_tokens=True)
     

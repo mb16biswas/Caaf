@@ -122,8 +122,8 @@ def extract_answers_and_scores(responses_text):
 
 
 folder_name = MODEL_NAME.split("/")[-1]
-output_dir = f"/workspace/data/Momojit/ensemble-llm/base-line/models/{folder_name}"
-base_folder_infer = "/workspace/data/Momojit/ensemble-llm/pre-train-model/infer-res/"
+output_dir = f"/workspace/data/ensemble-llm/base-line/models/{folder_name}"
+base_folder_infer = "/workspace/data/ensemble-llm/pre-train-model/infer-res/"
 
 
 
@@ -202,12 +202,12 @@ def gen_prompt(LLM1_Output,LLM2_Output,LLM3_Output,
 
 dataset_name = ['covidqa', 'cuad', 'delucionqa', 'emanual', 'expertqa', 'finqa', 'hagrid', 'hotpotqa', 'msmarco', 'pubmedqa', 'tatqa', 'techqa']
 models = ["mistralai-2", "llama-3-hf", "mistralai-3", "llama-2-hf" , "Saul" , "quen-2" ]
-base_paths = ["/workspace/data/Momojit/ensemble-llm/base-res-test/mistralai-2/", 
-             "/workspace/data/Momojit/ensemble-llm/base-res-test/llama-3-hf/" , 
-             "/workspace/data/Momojit/ensemble-llm/base-res-test/mistralai-3/", 
-             "/workspace/data/Momojit/ensemble-llm/base-res-test/llama-2-hf/", 
-             "/workspace/data/Momojit/ensemble-llm/base-res-test/Saul/", 
-             "/workspace/data/Momojit/ensemble-llm/base-res-test/quen-2/"]
+base_paths = ["/workspace/data/ensemble-llm/base-res-test/mistralai-2/", 
+             "/workspace/data/ensemble-llm/base-res-test/llama-3-hf/" , 
+             "/workspace/data/ensemble-llm/base-res-test/mistralai-3/", 
+             "/workspace/data/ensemble-llm/base-res-test/llama-2-hf/", 
+             "/workspace/data/ensemble-llm/base-res-test/Saul/", 
+             "/workspace/data/ensemble-llm/base-res-test/quen-2/"]
 
 
 all_outputs_mis2= []

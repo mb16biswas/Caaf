@@ -3,7 +3,7 @@ import numpy as np
 import os
 import json
 
-base_folder_met = "/workspace/data/Momojit/ensemble-llm/llm-blen/infer-res-met/"
+base_folder_met = "/workspace/data/ensemble-llm/llm-blen/infer-res-met/"
 
 files = os.listdir(base_folder_met)
 

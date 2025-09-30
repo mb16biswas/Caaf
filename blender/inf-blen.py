@@ -185,12 +185,12 @@ def extract_answers_and_scores(responses_text):
 
 dataset_name = ['covidqa', 'cuad', 'delucionqa', 'emanual', 'expertqa', 'finqa', 'hagrid', 'hotpotqa', 'msmarco', 'pubmedqa', 'tatqa', 'techqa']
 models = ["mistralai-2", "llama-3-hf", "mistralai-3", "llama-2-hf" , "Saul" , "quen-2" ]
-base_paths = ["/workspace/data/Momojit/ensemble-llm/base-res-test/mistralai-2/", 
-             "/workspace/data/Momojit/ensemble-llm/base-res-test/llama-3-hf/" , 
-             "/workspace/data/Momojit/ensemble-llm/base-res-test/mistralai-3/", 
-             "/workspace/data/Momojit/ensemble-llm/base-res-test/llama-2-hf/", 
-             "/workspace/data/Momojit/ensemble-llm/base-res-test/Saul/", 
-             "/workspace/data/Momojit/ensemble-llm/base-res-test/quen-2/"]
+base_paths = ["/workspace/data/ensemble-llm/base-res-test/mistralai-2/", 
+             "/workspace/data/ensemble-llm/base-res-test/llama-3-hf/" , 
+             "/workspace/data/ensemble-llm/base-res-test/mistralai-3/", 
+             "/workspace/data/ensemble-llm/base-res-test/llama-2-hf/", 
+             "/workspace/data/ensemble-llm/base-res-test/Saul/", 
+             "/workspace/data/ensemble-llm/base-res-test/quen-2/"]
 
 
 
@@ -598,4 +598,4 @@ print(df.head(2))
 
 model_name_ = model_name.split("/")[-1]
 
-df.to_csv(f"/workspace/data/Momojit/ensemble-llm/llm-blen/infer-res/llm-blen-{model_name_}-{dataset_name[i_]}.csv", index = False)
+df.to_csv(f"/workspace/data/ensemble-llm/llm-blen/infer-res/llm-blen-{model_name_}-{dataset_name[i_]}.csv", index = False)

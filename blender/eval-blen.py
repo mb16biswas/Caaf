@@ -1,27 +1,3 @@
-import subprocess
-
-# List of commands
-commands = [
-    "pip install datasets==2.16.1", 
-    "pip install scikit-learn numpy pandas", 
-    "pip install transformers==4.30", 
-    "pip install -q -U trl accelerate", 
-    "pip uninstall -y apex", 
-    "pip install -U sentence-transformers",
-    "pip install evaluate",
-    "pip install nltk rouge_score",
-    "pip install sacrebleu",
-    "pip install sacremoses",
-    "pip install bert_score",
-
-]
-
-# Execute each command
-for cmd in commands:
-    subprocess.run(cmd, shell=True)
-
-
-
 from datasets import load_metric
 import evaluate
 from evaluate import load
@@ -41,8 +17,8 @@ bertscore = load("bertscore")
 
 
 
-base_folder_infer = "/workspace/data/Momojit/ensemble-llm/pre-train-model/infer-res/"
-base_folder_met = "/workspace/data/Momojit/ensemble-llm/pre-train-model/infer-res-met/"
+base_folder_infer = "/workspace/data/ensemble-llm/llm-blen/infer-res/"
+base_folder_met = "/workspace/data/ensemble-llm/llm-blen/infer-res-met/"
 
 
 # paths = ["t5-small-pred-Con_Model_All-covidqa.csv",
@@ -211,147 +187,16 @@ for f in paths:
     
     df = pd.read_csv(d_path)
     
-    mis2 = list(df["mis2"])
-    llama3 = list(df["llama3"])
-    mis3 = list(df["mis3"])
+
     pred = list(df["Pred"])
     gt = list(df["GT"])
 
 
-    mis2 = [i if type(i) == str else "The Answer is not mentioned in the context" for i in mis2] 
-    llama3 = [i if type(i) == str else "The Answer is not mentioned in the context" for i in llama3] 
-    mis3 = [i if type(i) == str else "The Answer is not mentioned in the context" for i in mis3] 
     pred = [i if type(i) == str else "The Answer is not mentioned in the context" for i in pred] 
     gt = [i if type(i) == str else "The Answer is not mentioned in the context" for i in gt] 
 
     
 
-    rl,rs = rouge_score(mis2,gt)
-
-    Blue = bleu_score(mis2,gt)
-
-    Sac_Blue = sacrebleu_score(mis2,gt)
-
-    Meteor = meteor_score(mis2,gt)
-
-    Sari = sari_score(mis2,gt)
-
-    Bert_f1 = bert_score(mis2,gt)
-
-    print()
-    print()
-    print("*"*100)
-    
-    print("Mistral-2")
-    print(f"Rouge l: {rl}")
-    print(f"Rouge ls: {rs}")
-    print(f"Blue: {Blue}")
-    print(f"Sac_Blue: {Sac_Blue}")
-    print(f"Meteor: {Meteor}")
-    print(f"Sari: {Sari}")
-    print(f"Bert_f1: {Bert_f1}")
-    print()
-    print("*"*100)
-    print()
-    print()
-    
-
-    d1 = {
-        "Rouge-l" : rl,
-        "Rouge-ls" : rs,
-        "Blue" : Blue , 
-        "Sac_Blue" : Sac_Blue, 
-        "Meteor" : Meteor, 
-        "Sari" : Sari, 
-        "Bert_f1" : Bert_f1
-    }
-
-    d["mistral-2"] = d1 
-    
-    rl,rs = rouge_score(mis3,gt)
-
-    Blue = bleu_score(mis3,gt)
-
-    Sac_Blue = sacrebleu_score(mis3,gt)
-
-    Meteor = meteor_score(mis3,gt)
-
-    Sari = sari_score(mis3,gt)
-
-    Bert_f1 = bert_score(mis3,gt)
-
-    print()
-    print()
-    print("*"*100)
-    
-    print("Mistral-3")
-    print(f"Rouge: {rl}")
-    print(f"Rouge ls: {rs}")
-    print(f"Blue: {Blue}")
-    print(f"Sac_Blue: {Sac_Blue}")
-    print(f"Meteor: {Meteor}")
-    print(f"Sari: {Sari}")
-    print(f"Bert_f1: {Bert_f1}")
-    print()
-    print("*"*100)
-    print()
-    print()
-    
-
-    d1 = {
-        "Rouge-l" : rl,
-        "Rouge-ls" : rs,
-        "Blue" : Blue , 
-        "Sac_Blue" : Sac_Blue, 
-        "Meteor" : Meteor, 
-        "Sari" : Sari, 
-        "Bert_f1" : Bert_f1
-    }
-
-
-    d["mistral-3"] = d1     
-
-    rl,rs = rouge_score(llama3,gt)    
-
-    Blue = bleu_score(llama3,gt)
-
-    Sac_Blue = sacrebleu_score(llama3,gt)
-
-    Meteor = meteor_score(llama3,gt)
-
-    Sari = sari_score(llama3,gt)
-
-    Bert_f1 = bert_score(llama3,gt)
-
-    print()
-    print()
-    print("*"*100)
-    
-    print("Llama-3")
-    print(f"Rouge: {rl}")
-    print(f"Rouge ls: {rs}")
-    print(f"Blue: {Blue}")
-    print(f"Sac_Blue: {Sac_Blue}")
-    print(f"Meteor: {Meteor}")
-    print(f"Sari: {Sari}")
-    print(f"Bert_f1: {Bert_f1}")
-    print()
-    print("*"*100)
-    print()
-    print()
-    
-    d1 = {
-        "Rouge-l" : rl,
-        "Rouge-ls" : rs,
-        "Blue" : Blue , 
-        "Sac_Blue" : Sac_Blue, 
-        "Meteor" : Meteor, 
-        "Sari" : Sari, 
-        "Bert_f1" : Bert_f1
-    }
-
-    d["llama-3"] = d1     
-    
     rl,rs = rouge_score(pred,gt)    
 
     Blue = bleu_score(pred,gt)

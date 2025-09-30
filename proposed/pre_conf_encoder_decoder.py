@@ -1,4 +1,3 @@
-
 import torch
 import torch.nn as nn
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
@@ -25,7 +24,7 @@ import pandas as pd
 import numpy as np
 import re
 import json
-
+import time
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 import argparse
@@ -34,9 +33,10 @@ import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('--f1', type=int, default = 1)
 parser.add_argument('--f2', type=int, default = 1)
-parser.add_argument('--i', type=int, default = 0)
-parser.add_argument('--e', type=int, default = 15)
-
+parser.add_argument('--b', type=int, default = 4)
+parser.add_argument('--e', type=int, default = 1)
+parser.add_argument('--lr', type=float, default = 0.00001*2)
+parser.add_argument('--n', type=int, default = 15)
 
 
 
@@ -45,9 +45,10 @@ args, unknown_args = parser.parse_known_args()
 
 flag = args.f1
 flag2 = args.f2
-i_ = args.i
 epochs = args.e
-
+batch_size = args.b 
+lr = args.lr
+n_ = args.n
 
 base_folder_model = "/workspace/data/ensemble-llm/pre-train-model/models/"
 base_folder_graph = "/workspace/data/ensemble-llm/pre-train-model/loss_curves/"
@@ -66,19 +67,10 @@ elif(flag == 3):
     
     base_model_name="google-t5/t5-large"
 
+if(flag == 4):
+    
+    base_model_name="facebook/bart-base"
 
-print()
-print()
-print()
-print("*"*100)
-print()
-print(f"base_model_name: {base_model_name}")
-print(f"flag {flag}")
-print(f"flag2 {flag2}")
-print()
-print("*"*100)
-print()
-print()
 
 if(flag2 == 0):
     
@@ -212,10 +204,7 @@ if(flag2 == 0):
         
     model_config = "Con_Model"
     model = ConfidenceAwareFusionModel().to(device)
-    model_name_ = base_model_name.split("/")[-1]
-    checkpoint = torch.load(os.path.join(base_folder_model,f"{model_name_}-{model_config}-epoch-{epochs}-v2.pth")) #     f"{model_name_}-{model_config}-epoch-{epochs-1}.pth"
-    model.load_state_dict(checkpoint['model_state_dict'])   
-    
+    optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
     
     
 else: 
@@ -379,11 +368,83 @@ else:
     
     model_config = "Con_Model_All"
     model = ConfidenceAwareFusionModelALL().to(device)
-    model_name_ = base_model_name.split("/")[-1]
-    checkpoint = torch.load(os.path.join(base_folder_model,f"{model_name_}-{model_config}-epoch-{epochs}-v2.pth")) #     f"{model_name_}-{model_config}-epoch-{epochs-1}.pth"
-    model.load_state_dict(checkpoint['model_state_dict'])       
-
+    optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
     
+
+
+print()
+print()
+print()
+print("*"*100)
+print()
+print("*"*100)
+print()
+print("*"*100)
+print()
+print(f"base_model_name: {base_model_name}")
+print(f"flag {flag}")
+print(f"flag2 {flag2}")
+print(f"epochs {epochs}")
+print(f"batch_size  {batch_size }")
+print(f"lr {lr}")
+print(f"model_config: {model_config}")
+print(f"n_ : {n_}")
+print()
+print("*"*100)
+print()
+print("*"*100)
+print()
+print("*"*100)
+print()
+print()
+    
+
+
+
+class FusionDataset(Dataset):
+    def __init__(self, all_outputs, all_confidences, all_targets, tokenizer):
+        self.all_outputs = all_outputs
+        self.all_confidences = all_confidences
+        self.all_targets = all_targets
+        self.tokenizer = tokenizer
+
+    def __len__(self):
+        return len(self.all_outputs)
+
+    def __getitem__(self, idx):
+        llm_outputs = self.all_outputs[idx]
+        confidences = self.all_confidences[idx]
+        target = self.all_targets[idx]
+
+        # Tokenize input answers
+        input_ids_list, attention_masks = [], []
+        for out in llm_outputs:
+            encoded = self.tokenizer(out, return_tensors="pt", padding=True, truncation=True)
+            input_ids_list.append(encoded['input_ids'].squeeze(0))  # (seq_len,)
+            attention_masks.append(encoded['attention_mask'].squeeze(0))
+
+        # Tokenize target
+        label_ids = self.tokenizer(target, return_tensors="pt", padding=True, truncation=True).input_ids.squeeze(0)
+
+        return input_ids_list, attention_masks, confidences, label_ids
+
+
+def fusion_collate_fn(batch):
+    input_ids_list_batch = []
+    attn_masks_batch = []
+    confidences_batch = []
+    labels_batch = []
+
+    for input_ids_list, attn_masks_list, confs, label in batch:
+        input_ids_list_batch.append(input_ids_list)
+        attn_masks_batch.append(attn_masks_list)
+        confidences_batch.append(confs)
+        labels_batch.append(label.squeeze(0))  # remove batch dim if exists
+
+    # Pad labels to the same length
+    labels_batch = pad_sequence(labels_batch, batch_first=True, padding_value=model.tokenizer.pad_token_id)
+
+    return input_ids_list_batch, attn_masks_batch, confidences_batch, labels_batch
 
 
 
@@ -391,7 +452,15 @@ else:
 def extract_answers_and_scores(responses_text):
     extracted_data = []
 
+    # Regex to find each "Question: ... Answer: ... Score: ..." block
+    # This pattern captures the "answer" and "score" from each block.
+    # It's more robust to match the whole block first
+    # and then parse the "answer" and "score" within that block.
+    # Using re.findall will give us all non-overlapping matches.
+    # We use a non-greedy match for '.*?' to avoid matching across blocks.
 
+    # This regex looks for the pattern starting with "Question:" and ending with "Score: X.X" or "Score: X"
+    # and captures the answer and score within each such block.
     qa_blocks = re.findall(
         r'Question:.*?Answer:\s*(.*?)\nScore:\s*(\d+\.?\d+)',
         responses_text,
@@ -454,29 +523,43 @@ def extract_answers_and_scores(responses_text):
 
 
 
-dataset_name = ['covidqa', 'cuad', 'delucionqa', 'emanual', 'expertqa', 'finqa', 'hagrid', 'hotpotqa', 'msmarco', 'pubmedqa', 'tatqa', 'techqa']
-models = ["mistralai-2", "llama-3-hf", "mistralai-3", "llama-2-hf" , "Saul" , "quen-2" ]
-base_paths = ["/workspace/data/ensemble-llm/base-res-test/mistralai-2/", 
-             "/workspace/data/ensemble-llm/base-res-test/llama-3-hf/" , 
-             "/workspace/data/ensemble-llm/base-res-test/mistralai-3/", 
-             "/workspace/data/ensemble-llm/base-res-test/llama-2-hf/", 
-             "/workspace/data/ensemble-llm/base-res-test/Saul/", 
-             "/workspace/data/ensemble-llm/base-res-test/quen-2/"]
+
+df = pd.read_csv("/workspace/data/ensemble-llm/pre-train-model/data/pre-data-4774.csv")
+df = df.sample(frac=1, random_state=42)
+
+df = df.head(1500)
+
+a_mis2 = list(df["mis-2"])
+a_llama3 = list(df["llama-3"])
+a_mis3 = list(df["mis-3"])
+
+c_mis2 = list(df["con-mis-2"])
+c_llama3 = list(df["con-llama-3"])
+c_mis3 = list(df["con-mis-3"])
+
+all_targets = list(df["target"])
 
 
+all_outputs = []
+all_confidences = []
 
+
+for i in range(0,len(a_mis2)):
     
-all_outputs_mis2= []
-all_confidences_mis2= []
+    all_outputs.append([a_mis2[i],a_llama3[i],a_mis3[i]])
+    all_confidences.append([c_mis2[i],c_llama3[i],c_mis3[i]])
+    
 
-all_outputs_llama3= []
-all_confidences_llama3 = []
+ei = int(len(all_outputs)*0.80)
+
+all_outputs_train = all_outputs[:ei]
+all_confidences_train = all_confidences[:ei]
+all_targets_train = all_targets[:ei]
 
 
-all_outputs_mis3 = []
-all_confidences_mis3= []
-
-all_targets = []
+all_outputs_test = all_outputs[ei:]
+all_confidences_test = all_confidences[ei:]
+all_targets_test = all_targets[ei:]
 
 
 
@@ -484,203 +567,225 @@ print()
 print("*"*100)
 print()
 print()
-print(dataset_name[i_])
-print()
-print()
-print()
 print("*"*100)
 print()
-
-f_name_1 = f"res-{models[0]}-{dataset_name[i_]}-v3.csv"  
-f_name_2 = f"res-{models[1]}-{dataset_name[i_]}-v3.csv"  
-f_name_3 = f"res-{models[2]}-{dataset_name[i_]}-v3.csv"
-
-folder_path1 = os.path.join(base_paths[0],f_name_1)
-folder_path2 =  os.path.join(base_paths[1],f_name_2)
-folder_path3 =  os.path.join(base_paths[2],f_name_3)
-
-df1 = pd.read_csv(folder_path1)
-df2 = pd.read_csv(folder_path2)
-df3 = pd.read_csv(folder_path3)
-
-
-df1 = df1.dropna()
-df2 = df2.dropna()
-df3 = df3.dropna()
-
-print(len(df1),len(df2),len(df3))
-
-ans1 = list(df1["Answer"])
-ans2 = list(df2["Answer"])
-ans3 = list(df3["Answer"])
-
-ea_1 = []
-s_1 = []
-A = []
-for a in ans1: 
-
-    a_ = extract_answers_and_scores(a)
-
-    if(len(a_) == 0):
-
-        ea_1.append([])
-        s_1.append([])
-
-    else:
-
-        ea_1.append(a_[0]["answer"])
-        s_1.append(a_[0]["score"])
-
-
-ea_2 = []
-s_2 = []
-A = []
-for a in ans2: 
-
-    a_ = extract_answers_and_scores(a)
-
-    if(len(a_) == 0):
-
-        ea_2.append([])
-        s_2.append([])
-
-    else: 
-        ea_2.append(a_[0]["answer"])
-        s_2.append(a_[0]["score"])
-
-
-ea_3 = []
-s_3 = []
-A = []
-for a in ans3: 
-
-    a_ = extract_answers_and_scores(a)
-
-    if(len(a_) == 0):
-
-        ea_3.append([])
-        s_3.append([])
-
-    else:
-        ea_3.append(a_[0]["answer"])
-        s_3.append(a_[0]["score"])
-
-
-
-df1["Extracted_Answer"] = ea_1
-df1["Score"] = s_1
-
-df2["Extracted_Answer"] = ea_2
-df2["Score"] = s_2
-
-df3["Extracted_Answer"] = ea_3
-df3["Score"] = s_3
-
-
-df1 = df1[df1['Extracted_Answer'].apply(lambda x: len(x) > 0)]
-df2 = df2[df2['Extracted_Answer'].apply(lambda x: len(x) > 0)]
-df3 = df3[df3['Extracted_Answer'].apply(lambda x: len(x) > 0)]
-
-
-df1_index = set(list(df1["Index"]))
-df2_index = set(list(df2["Index"]))
-df3_index = set(list(df3["Index"]))
-
-print(len(df1_index),len(df2_index),len(df3_index))
-
-
-for i in range(0,1000):
-
-    if(i in df1_index and i in df2_index and i in df3_index):
-
-        df1_ = df1[df1['Index'] == i]
-        df2_ = df2[df2['Index'] == i]
-        df3_ = df3[df3['Index'] == i]
-
-        df1_ea = list(df1_["Extracted_Answer"])[0]
-        df2_ea = list(df2_["Extracted_Answer"])[0]
-        df3_ea = list(df3_["Extracted_Answer"])[0]
-
-
-        df1_s = list(df1_["Score"])[0]
-        df2_s = list(df2_["Score"])[0]
-        df3_s = list(df3_["Score"])[0]
-
-        df1_gt = list(df1_["Response"])[0]
-
-
-
-
-        all_targets.append(df1_gt)
-
-        all_outputs_mis2.append(df1_ea)
-        all_outputs_llama3.append(df2_ea)
-        all_outputs_mis3.append(df3_ea)
-
-        all_confidences_mis2.append(df1_s)
-        all_confidences_llama3.append(df2_s)
-        all_confidences_mis3.append(df3_s)
-
-
+print(f"df len(df)")
+print(f"all_outputs: {len(all_outputs)}")
+print(f"all_confidences: {len(all_confidences)}")
+print(f"all_targets: {len(all_targets)}")
 print()
 print("*"*100)
-print()
-print()
-print(dataset_name[i_])
-print()
 print()
 print()
 print("*"*100)
 print()
 
 
-all_outputs= []
-all_confidences= []
+train_dataset = FusionDataset(
+    all_outputs=all_outputs_train,
+    all_confidences=all_confidences_train,
+    all_targets=all_targets_train,
+    tokenizer=model.tokenizer
+)
+
+val_dataset = FusionDataset(
+    all_outputs=all_outputs_test,
+    all_confidences=all_confidences_test,
+    all_targets=all_targets_test,
+    tokenizer=model.tokenizer
+)
+
+train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, collate_fn=fusion_collate_fn)
+val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True, collate_fn=fusion_collate_fn)
 
 
-n = len(all_outputs_mis2)
-for i in range(n): 
+
+
+
+def train_model(model,train_dataloader,optimizer):
     
-    all_outputs.append([all_outputs_mis2[i] , all_outputs_llama3[i] , all_outputs_mis3[i]])
-    all_confidences.append([all_confidences_mis2[i],all_confidences_llama3[i],all_confidences_mis3[i]])
-   
+    model = model.train()
     
+    epoch_loss = 0
 
-Pred_Ans = []
-ans_mis2 = []
-ans_llama3 = []
-ans_mis3 = []
+    for batch in tqdm(train_dataloader):
+        input_ids_list_batch, attn_masks_batch, confidences_batch, labels_batch = batch
 
-for i in range(0,n): 
+        # Process each sample in the batch (since fusion model is not batchified)
+        for input_ids_list, attention_masks, raw_confidences, label in zip(input_ids_list_batch, attn_masks_batch, confidences_batch, labels_batch):
+            optimizer.zero_grad()
+
+            # Move tensors to device
+            input_ids_list = [x.to(device) for x in input_ids_list]
+            attention_masks = [x.to(device) for x in attention_masks]
+            raw_confidences = [float(c) for c in raw_confidences]
+
+
+            # labels = label.unsqueeze(0).to(device)
+
+            # decoder_input_ids = model.tokenizer("summarize:", return_tensors="pt").input_ids.to(device)
+
+            decoder_input = "summarize:"
+            decoder_input_ids = model.tokenizer(decoder_input, return_tensors="pt", padding=True, truncation=True).input_ids.to(device)
+
+            # Tokenize the target (label) properly
+            if isinstance(label, str):
+                labels = model.tokenizer(label, return_tensors="pt", padding=True, truncation=True).input_ids.to(device)
+            else:
+                labels = label.unsqueeze(0).to(device)
+
+
+            output = model(input_ids_list, attention_masks, raw_confidences, decoder_input_ids=None, labels=labels)
+
+            loss = output.loss
+            loss.backward()
+            optimizer.step()
+
+            epoch_loss += loss.item()
+
+
+    print()
+    print(f"train Loss: {epoch_loss:.4f}")
+    print()
     
+    return epoch_loss
 
 
-    input_ids_list, attn_masks = [], []
-    
-    for out in all_outputs[i]:
-        
-        encoded = model.tokenizer(out, return_tensors="pt",padding=True, truncation=True).to(device)
-        input_ids_list.append(encoded['input_ids'])
-        attn_masks.append(encoded['attention_mask'])
-    
-#     labels = model.tokenizer(all_targets[i], return_tensors="pt",padding=True, truncation=True).input_ids.to(device)
-    decoder_input_ids = model.tokenizer("summarize:", return_tensors="pt").input_ids.to(device)
-        
 
-    fused_answer = model.generate(input_ids_list, attn_masks, all_confidences[i])
+def val_model(model,val_dataloader):
     
-    Pred_Ans.append(fused_answer)
-    ans_mis2.append(all_outputs[i][0])
-    ans_llama3.append(all_outputs[i][1])
-    ans_mis3.append(all_outputs[i][2])
+    model = model.eval()
     
-    
-df = {"mis2" : ans_mis2, 
-      "llama3" : ans_llama3, 
-      "mis3" : ans_mis3, 
-      "Pred" : Pred_Ans, 
-     "GT" :  all_targets}
+    epoch_loss = 0
 
-df = pd.DataFrame(df)
+    for batch in tqdm(val_dataloader):
+        input_ids_list_batch, attn_masks_batch, confidences_batch, labels_batch = batch
 
-df.to_csv(os.path.join(base_folder_infer, f"{model_name_}-pred-{model_config}-{dataset_name[i_]}.csv"), index = False)
+        # Process each sample in the batch (since fusion model is not batchified)
+        for input_ids_list, attention_masks, raw_confidences, label in zip(input_ids_list_batch, attn_masks_batch, confidences_batch, labels_batch):
+            optimizer.zero_grad()
+
+            # Move tensors to device
+            input_ids_list = [x.to(device) for x in input_ids_list]
+            attention_masks = [x.to(device) for x in attention_masks]
+            raw_confidences = [float(c) for c in raw_confidences]
+
+
+            # labels = label.unsqueeze(0).to(device)
+
+            # decoder_input_ids = model.tokenizer("summarize:", return_tensors="pt").input_ids.to(device)
+
+            decoder_input = "summarize:"
+            decoder_input_ids = model.tokenizer(decoder_input, return_tensors="pt", padding=True, truncation=True).input_ids.to(device)
+
+            # Tokenize the target (label) properly
+            if isinstance(label, str):
+                labels = model.tokenizer(label, return_tensors="pt", padding=True, truncation=True).input_ids.to(device)
+            else:
+                labels = label.unsqueeze(0).to(device)
+
+            with torch.no_grad():
+                
+                output = model(input_ids_list, attention_masks, raw_confidences, decoder_input_ids=None, labels=labels)
+
+            loss = output.loss
+            epoch_loss += loss.item()
+
+
+    print()
+    print(f"val Loss: {epoch_loss:.4f}")
+    print()
+    
+    return epoch_loss
+
+
+model_name_ = base_model_name.split("/")[-1]
+
+if(epochs > 1):
+
+
+  model_ = f"{model_name_}-{model_config}-epoch-{epochs-1}-v2.pth"
+  
+
+  checkpoint = torch.load(os.path.join(base_folder_model,model_))
+  model.load_state_dict(checkpoint['model_state_dict'])
+  optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+
+
+E = []
+T_Loss = []
+E_Loss = []
+
+
+t_start = time.time()
+
+for e in range(epochs,epochs+n_): 
+    
+    print()
+    print("*"*100)
+    print()
+    print(f"Epoch Number: {e}")
+    print()
+    train_loss = train_model(model,train_dataloader,optimizer)
+    val_loss = val_model(model,val_dataloader)
+    print()
+    print("*"*100)
+    print()
+    E.append(e+1)
+    T_Loss.append(train_loss)
+    E_Loss.append(val_loss)
+    
+    
+    df = {"Epoch" : E, 
+         "Train_Loss" : T_Loss, 
+         "Eval_Loss" : E_Loss}
+    
+    
+    df = pd.DataFrame(df)
+    
+    
+    df.to_csv(os.path.join(base_folder_graph, f"{model_name_}-{model_config}-epoch-{e}-v2.csv"), index = False)
+    
+    
+    
+checkpoint = {
+    'model_state_dict': model.state_dict(),
+    'optimizer_state_dict': optimizer.state_dict()
+
+}
+
+
+
+torch.save(checkpoint, os.path.join(base_folder_model,f"{model_name_}-{model_config}-epoch-{e}-v2.pth"))
+
+
+t_end = time.time()
+
+
+
+
+print()
+print()
+print("*"*100)
+print("*"*100)
+print()
+print()
+print()
+print()
+print("*"*100)
+print("*"*100)
+print()
+print()
+print(f"total time: {t_end - t_start}")
+print()
+print()
+print("*"*100)
+print("*"*100)
+print()
+print()
+print()
+print()
+print("*"*100)
+print("*"*100)
+print()
+print()

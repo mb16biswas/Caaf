@@ -89,7 +89,7 @@ args, unknown_args = parser.parse_known_args()
 
 
 
-base = "/workspace/data/Momojit/ensemble-llm/pre-train/"
+base = "/workspace/data/ensemble-llm/pre-train/"
 datasets = ['covidqa', 'cuad', 'delucionqa', 'emanual', 'expertqa', 'finqa', 'hagrid', 'hotpotqa', 'msmarco', 'pubmedqa', 'tatqa', 'techqa']
 
 
@@ -105,9 +105,9 @@ if(f2 >= len(datasets)):
     
     f2 = 1 
 
-# base = "/workspace/data/Momojit/misinter-policy/pdfs/"
-# db_path = "/workspace/data/Momojit/misinter-policy/db/"
-# cache_path = "/workspace/data/Momojit/misinter-policy/cache-qa3/"
+# base = "/workspace/data/misinter-policy/pdfs/"
+# db_path = "/workspace/data/misinter-policy/db/"
+# cache_path = "/workspace/data/misinter-policy/cache-qa3/"
 # Chuck_Size = 1200
 # Chunk_Overlap = 200
 # K_ = 5
@@ -116,9 +116,8 @@ if(f2 >= len(datasets)):
 if unknown_args:
     print(f"Unrecognized arguments: {unknown_args}")
 
-#sec_key = "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"  #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
-sec_key = "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"  #for base_res2.py
-sec_key = "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"  #for base_res1.py
+
+sec_key = ""  #for base_res1.py
 os.environ["HUGGINGFACEHUB_API_TOKEN"]=sec_key
 login(token = sec_key)
 
@@ -129,35 +128,35 @@ set_seed(seed)
 if(f1==1):
 
     repo_id = "mistralai/Mistral-7B-Instruct-v0.2"
-    folder = "/workspace/data/Momojit/ensemble-llm/base-res/mistralai-2/"
+    folder = "/workspace/data/ensemble-llm/base-res/mistralai-2/"
 
 elif(f1==2):
 
     repo_id = "meta-llama/Meta-Llama-3-8B-Instruct"
-    folder = "/workspace/data/Momojit/ensemble-llm/base-res/llama-3-hf/"
+    folder = "/workspace/data/ensemble-llm/base-res/llama-3-hf/"
 
 elif(f1==3):
 
 
     repo_id = "mistralai/Mistral-7B-Instruct-v0.3"
-    folder = "/workspace/data/Momojit/ensemble-llm/base-res/mistralai-3/"
+    folder = "/workspace/data/ensemble-llm/base-res/mistralai-3/"
 
 
 elif(f1==4):
 
     repo_id = "dfurman/Llama-2-13B-Instruct-v0.2"
-    folder = "/workspace/data/Momojit/ensemble-llm/base-res/llama-2-13b/"
+    folder = "/workspace/data/ensemble-llm/base-res/llama-2-13b/"
 
 
 elif(f1==5):
 
     repo_id = "Equall/Saul-7B-Instruct-v1"
-    folder = "/workspace/data/Momojit/ensemble-llm/base-res/Saul/"
+    folder = "/workspace/data/ensemble-llm/base-res/Saul/"
 
 else:
 
     repo_id = "Qwen/Qwen2-7B-Instruct"
-    folder = "/workspace/data/Momojit/ensemble-llm/base-res/quen-2/"
+    folder = "/workspace/data/ensemble-llm/base-res/quen-2/"
     temperature=2.0
 
 
