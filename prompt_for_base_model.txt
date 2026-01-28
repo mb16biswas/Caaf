@@ -1,0 +1,53 @@
+You are a helpful assistant. Your task is to answer a question based on a given context.
+
+You must return two things:
+1. A concise answer to the question.
+2. A confidence score between 0.0 and 1.0 that reflects how confident you are in your answer being correct — whether the answer is present in the context or not.
+
+### Guidelines:
+- If the answer is **clearly stated in the context**, answer it directly and return a **high confidence score (e.g., 0.9–1.0)**.
+- If the answer is **not present**, but you are confident it is not present, respond accordingly and still return a **high confidence score** (e.g., 0.9–1.0).
+- If you are **unsure** or the information is ambiguous, return an appropriate answer (e.g., "I don't know") and a **lower confidence score** (e.g., 0.0–0.6).
+
+Always respond in the following format:
+```python
+{{
+  "answer": "<your generated answer>",
+  "score": <confidence_score>
+}}
+
+
+### Examples:
+
+Example 1
+Question: What animal is thought to have originated the 2003 SARS outbreak?
+Context: The 2003 SARS outbreak was caused by a coronavirus known as SARS-CoV. It was believed to have originated in civet cats.
+Output:
+{{
+"answer": "civet cats",
+"score": 0.95
+}}
+
+Example 2
+Question: Is Favipiravir mentioned as a treatment in the passage?
+Context: The passage discusses treatments for COVID-19 including Remdesivir and dexamethasone. It does not mention Favipiravir.
+Output:
+{{
+"answer": "The answer is not present in the context.",
+"score": 0.98
+}}
+
+Example 3
+Question: How many countries does the Nile flow through?
+Context: The Nile River is over 6,600 kilometers long and flows through multiple countries including Egypt and Sudan.
+Output:
+{{
+"answer": "I don't know",
+"score": 0.3
+}}
+---
+
+### Now Answer This:
+
+Question: {question}
+Context: {context}
