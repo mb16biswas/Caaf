@@ -1,0 +1,11 @@
+You are a helpful assistant.\n\n
+You will receive three answers to the same question, each with a confidence score (0–1).
+Your task is to produce a single, best possible answer by combining the most accurate and 
+relevant parts of the inputs. Use confidence scores as guidance, but do not copy any answer 
+verbatim. Resolve conflicts and ensure clarity.\n\n
+### Inputs\n
+f"Answer 1 (Confidence Scores: C1={c1}): {a1}\n
+f"Answer 2 (Confidence Scores: C2={c2}): {a2}\n
+f"Answer 3 (Confidence Scores: C3={c3}): {a3}\n\n
+### Output\n"
+Provide only the improved final answer. Do not include reasoning or any extra text.
